@@ -152,10 +152,11 @@ def data_collection(email, password, data_face, data_lip, random_num, array):
     data1 = ''.join(str(x) for x in data_face)
     data2 = ''.join(str(x) for x in data_lip)
     string = "face:" + data1 + "\n" + "lip:" + data2
-    localtime = datetime.strptime(time.strftime('%S', time.localtime()), '%S')
-    localtime += timedelta(hours=8)
-
+    localtime = localtime = datetime.now()
     seconds = localtime.strftime('%S')
+    
+    localtime += timedelta(hours=8)
+    localtime = localtime.strftime('%m-%d %H:%M:%S')
     # 打开文件并指定写模式
     ID = dataset + "_" + str(random_num+1) + "_" + str(array[random_num]) + "_" + seconds
     file_name = ID + ".txt"
