@@ -9,13 +9,15 @@ import poplib
 from email.parser import Parser
 from datetime import datetime, timedelta
 
+random_range = 10  
+
 @st.cache_data
 def send_email(email, password, array):
     # 构建邮件主体
     msg = MIMEMultipart()
     msg['From'] = email
     msg['To'] = email  # 收件人邮箱
-    msg['Subject'] = fr'{dataset} Number of submissions'
+    msg['Subject'] = fr'{dataset} Number of submissions {sum(array)}/{random_range*2}'
     
     # 邮件正文
     string = ''.join([str(element) for element in array])
@@ -51,7 +53,7 @@ def read_email(myemail, password):
             email_message = Parser().parsestr(raw_email)
             subject = email_message['Subject']
             
-            if subject == subject_to_search:
+            if subject and subject.startswith(subject_to_search):
                 for part in email_message.walk():
                     if part.get_content_type() == "text/plain":
                         content = part.get_payload(decode=True).decode(part.get_content_charset())
@@ -88,7 +90,7 @@ def read_email_(myemail, password):
             email_message = Parser().parsestr(raw_email)
             subject = email_message['Subject']
             
-            if subject == subject_to_search:
+            if subject and subject.startswith(subject_to_search):
                 for part in email_message.walk():
                     if part.get_content_type() == "text/plain":
                         content = part.get_payload(decode=True).decode(part.get_content_charset())
@@ -139,7 +141,7 @@ def get_ans(answer_str):
     elif "Right" in answer_str:
         return "0"
     elif "" in answer_str:
-        return "1"
+        return ""
     
 @st.cache_data
 def play_video(file_name):
@@ -204,7 +206,7 @@ def page(random_num):
         
     for num in range(video_num):
         # 显示页面内容
-        st.write(f'这是第{num+1+random_num*video_num}个视频，名称为{file_list[num+random_num*video_num].rstrip()}')
+        # st.write(f'这是第{num+1+random_num*video_num}个视频，名称为{file_list[num+random_num*video_num].rstrip()}')
         st.subheader(fr"Video {num+1}")
         video_bytes = play_video(file_list[num+random_num*video_num].rstrip())
         st.video(video_bytes)
@@ -230,9 +232,8 @@ def page(random_num):
                 st.write("**Your results ID:** ", ID)
                 face = ''.join(data_face)
                 lip = ''.join(data_lip)
-                st.write("**Results:** ")
-                st.write("face: ", face)
-                st.write("lip: ", lip)
+                st.write("**Realism:** ", face)
+                st.write("**Lip_Sync:** ", lip)
                 st.session_state.button_clicked = True 
 
     if st.session_state.button_clicked == True:
@@ -242,16 +243,17 @@ def page(random_num):
 
 if __name__ == '__main__':
     dataset = 'BIWI' 
+    video_num = 18
+    times = 2
+
     st.set_page_config(page_title="userstudy")
     #st.cache_data.clear() # 初始化
     myemail = st.secrets["my_email"]["email"]  
     password =  st.secrets["my_email"]["password"]
-    random_range = 10  
-    video_num = 18
     
     array = read_email(myemail, password)
     #array = [0 for x in range(10)]
-    if all((element == 2 or element > 2) for element in array):
+    if all((element == times or element > times) for element in array):
         array = [0] * random_range
 
     if "data_face" and "data_lip" not in st.session_state:
@@ -261,14 +263,15 @@ if __name__ == '__main__':
     else:
         data_face = st.session_state["data_face"]
         data_lip = st.session_state["data_lip"]
+
     random_num = 0
 
     if 'random_num' not in st.session_state:
         st.session_state.random_num = random.randint(0, random_range-1)
-        if array[st.session_state.random_num] == 2 or array[st.session_state.random_num] > 2 :
+        if array[st.session_state.random_num] == times or array[st.session_state.random_num] > times :
             while True:
                 st.session_state.random_num = random.randint(0, random_range-1)
-                if array[st.session_state.random_num] < 2 :
+                if array[st.session_state.random_num] < times :
                     break
 
     random_num = st.session_state.random_num

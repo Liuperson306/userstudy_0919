@@ -9,13 +9,15 @@ import poplib
 from email.parser import Parser
 from datetime import datetime, timedelta
 
+random_range = 10  
+
 @st.cache_data
 def send_email(email, password, array):
     # 构建邮件主体
     msg = MIMEMultipart()
     msg['From'] = email
     msg['To'] = email  # 收件人邮箱
-    msg['Subject'] = fr'{dataset} Number of submissions'
+    msg['Subject'] = fr'{dataset} Number of submissions {sum(array)}/{random_range*2}'
     
     # 邮件正文
     string = ''.join([str(element) for element in array])
@@ -51,7 +53,7 @@ def read_email(myemail, password):
             email_message = Parser().parsestr(raw_email)
             subject = email_message['Subject']
             
-            if subject == subject_to_search:
+            if subject and subject.startswith(subject_to_search):
                 for part in email_message.walk():
                     if part.get_content_type() == "text/plain":
                         content = part.get_payload(decode=True).decode(part.get_content_charset())
@@ -88,7 +90,7 @@ def read_email_(myemail, password):
             email_message = Parser().parsestr(raw_email)
             subject = email_message['Subject']
             
-            if subject == subject_to_search:
+            if subject and subject.startswith(subject_to_search):
                 for part in email_message.walk():
                     if part.get_content_type() == "text/plain":
                         content = part.get_payload(decode=True).decode(part.get_content_charset())
@@ -152,12 +154,14 @@ def data_collection(email, password, data_face, data_lip, random_num, array):
     data1 = ''.join(str(x) for x in data_face)
     data2 = ''.join(str(x) for x in data_lip)
     string = "face:" + data1 + "\n" + "lip:" + data2
-    localtime = datetime.strptime(time.strftime('%m-%d %H-%M-%S', time.localtime()), '%m-%d %H-%M-%S')
+    localtime = localtime = datetime.now()
+    seconds = localtime.strftime('%S')
+    
     localtime += timedelta(hours=8)
-
-    localtime = localtime.strftime('%m-%d %H-%M-%S')
+    localtime = localtime.strftime('%m-%d %H:%M:%S')
     # 打开文件并指定写模式
-    file_name = dataset + ' ' + str(random_num+1) + ' ' + localtime + ".txt"
+    ID = dataset + "_" + str(random_num+1) + "_" + str(array[random_num]) + "_" + seconds
+    file_name = ID + ".txt"
     file = open(file_name, "w")
     # 将字符串写入文件
     file.write(string)
@@ -168,7 +172,7 @@ def data_collection(email, password, data_face, data_lip, random_num, array):
     msg = MIMEMultipart()
     msg['From'] = email
     msg['To'] = email  # 收件人邮箱
-    msg['Subject'] = dataset + ' ' + str(random_num+1) + ' ' + str(array[random_num]) + ' ' + localtime
+    msg['Subject'] = ID
 
     # 邮件正文
     text = MIMEText(string)
@@ -189,6 +193,8 @@ def data_collection(email, password, data_face, data_lip, random_num, array):
     except smtplib.SMTPException as e:
         print('邮件发送失败，错误信息：', e)
 
+    return ID, localtime
+
 def page(random_num):
     instrunction()
     file = open(fr"filenames_{dataset}_after.txt", "r", encoding='utf-8') 
@@ -198,11 +204,11 @@ def page(random_num):
     if "button_clicked" not in st.session_state:
         st.session_state.button_clicked = False
         
-    for num in range(30):
+    for num in range(video_num):
         # 显示页面内容
-        #st.write(f'这是第{num+1+random_num*30}个视频，名称为{file_list[num+random_num*30].rstrip()}')
+        # st.write(f'这是第{num+1+random_num*video_num}个视频，名称为{file_list[num+random_num*video_num].rstrip()}')
         st.subheader(fr"Video {num+1}")
-        video_bytes = play_video(file_list[num+random_num*30].rstrip())
+        video_bytes = play_video(file_list[num+random_num*video_num].rstrip())
         st.video(video_bytes)
 
         st.write("Please answer the following questions, after you watch the video. ")
@@ -219,15 +225,15 @@ def page(random_num):
                 array = read_email_(myemail, password)
                 array[random_num]+=1
                 send_email(myemail, password, array)
-                data_collection(myemail, password, data_face, data_lip, random_num, array)
+                ID, localtime = data_collection(myemail, password, data_face, data_lip, random_num, array)
                 st.divider()
                 st.markdown(':blue[Please take a screenshot of the following results.]')
-                localtime = datetime.strptime(time.strftime('%m月%d日 %H时%M分%S秒', time.localtime()), '%m月%d日 %H时%M分%S秒')
-                localtime += timedelta(hours=8)
-
-                localtime = localtime.strftime('%m月%d日 %H时%M分%S秒')
                 st.write("**Time of submission:** ", localtime)
-                st.write("**Your results ID:** ", dataset, " ", str(random_num+1), str(array[random_num]))
+                st.write("**Your results ID:** ", ID)
+                face = ''.join(data_face)
+                lip = ''.join(data_lip)
+                st.write("**Realism:** ", face)
+                st.write("**Lip_Sync:** ", lip)
                 st.session_state.button_clicked = True 
 
     if st.session_state.button_clicked == True:
@@ -236,32 +242,36 @@ def page(random_num):
 
 
 if __name__ == '__main__':
-    dataset = 'VOCASET' 
+    dataset = 'vocaset' 
+    video_num = 18
+    times = 2
+
     st.set_page_config(page_title="userstudy")
     #st.cache_data.clear() # 初始化
     myemail = st.secrets["my_email"]["email"]  
     password =  st.secrets["my_email"]["password"]
-    random_range = 6  
     
     array = read_email(myemail, password)
-    if all((element == 3 or element > 3) for element in array):
+    #array = [0 for x in range(10)]
+    if all((element == times or element > times) for element in array):
         array = [0] * random_range
 
     if "data_face" and "data_lip" not in st.session_state:
         # 初始化data变量
-        data_face = [1 for x in range(30)]
-        data_lip = [1 for x in range(30)]
+        data_face = [1 for x in range(video_num)]
+        data_lip = [1 for x in range(video_num)]
     else:
         data_face = st.session_state["data_face"]
         data_lip = st.session_state["data_lip"]
+
     random_num = 0
 
     if 'random_num' not in st.session_state:
         st.session_state.random_num = random.randint(0, random_range-1)
-        if array[st.session_state.random_num] == 3 or array[st.session_state.random_num] > 3 :
+        if array[st.session_state.random_num] == times or array[st.session_state.random_num] > times :
             while True:
                 st.session_state.random_num = random.randint(0, random_range-1)
-                if array[st.session_state.random_num] < 3 :
+                if array[st.session_state.random_num] < times :
                     break
 
     random_num = st.session_state.random_num
